@@ -7818,7 +7818,7 @@ run(function()
     end
     
     local ProximityPromptDuration = vape.Categories.Utility:CreateModule({
-        Name = 'Proximity Prompt Duration',
+        Name = 'ProximityPromptDuration',
         Function = function(callback)
             if callback then
                 if moduleData.Connection then
@@ -14045,7 +14045,7 @@ end)
 	
 run(function()
 	vape.Categories.World:CreateModule({
-		Name = 'Anti-AFK',
+		Name = 'AntiAFK',
 		Function = function(callback)
 			if callback then
 				pcall(function()
@@ -17276,7 +17276,7 @@ run(function()
 	local NameToId = {}
 	
 	BedBreakEffect = vape.Categories.Legit:CreateModule({
-		Name = 'Bed Break Effect',
+		Name = 'BedBreakEffect',
 		Function = function(callback)
 			if callback then
 	            BedBreakEffect:Clean(vapeEvents.BedwarsBedBreak.Event:Connect(function(data)
@@ -17306,7 +17306,7 @@ end)
 	
 run(function()
 	vape.Categories.BoostFPS:CreateModule({
-		Name = 'Clean Kit',
+		Name = 'CleanKit',
 		Function = function(callback)
 			if callback then
 				bedwars.WindWalkerController.spawnOrb = function() end
@@ -17384,7 +17384,7 @@ run(function()
 	local oldvalues, oldfont = {}
 	
 	DamageIndicator = vape.Categories.Legit:CreateModule({
-		Name = 'Damage Indicator',
+		Name = 'DamageIndicator',
 		Function = function(callback)
 			if callback then
 				oldvalues = table.clone(tab)
@@ -17508,7 +17508,7 @@ run(function()
 	local nametagHooked = false
 	
 	FPSBoost = vape.Categories.BoostFPS:CreateModule({
-		Name = 'FPS Boost',
+		Name = 'FPSBoost',
 		Function = function(callback)
 			if callback then
 				if Kill.Enabled then
@@ -17622,7 +17622,7 @@ run(function()
 	local done = {}
 	
 	HitColor = vape.Categories.Legit:CreateModule({
-		Name = 'Hit Color',
+		Name = 'HitColor',
 		Function = function(callback)
 			if callback then 
 				repeat
@@ -17862,7 +17862,7 @@ run(function()
 	}
 	
 	KillEffect = vape.Categories.Legit:CreateModule({
-		Name = 'Kill Effect',
+		Name = 'KillEffect',
 		Function = function(callback)
 			if callback then
 				for i, v in killeffects do
@@ -17933,7 +17933,7 @@ run(function()
 	local label
 	
 	ReachDisplay = vape.Categories.Legit:CreateModule({
-		Name = 'Reach Display',
+		Name = 'ReachDisplay',
 		Function = function(callback)
 			if callback then
 				repeat
@@ -18022,7 +18022,7 @@ run(function()
 	end
 	
 	SongBeats = vape.Categories.Legit:CreateModule({
-		Name = 'Song Beats',
+		Name = 'SongBeats',
 		Function = function(callback)
 			if callback then
 				songobj = Instance.new('Sound')
@@ -18182,7 +18182,7 @@ run(function()
 	end
 	
 	UICleanup = vape.Categories.Legit:CreateModule({
-		Name = 'UI Cleanup',
+		Name = 'UICleanup',
 		Function = function(callback)
 			for i, v in (callback and new or old) do
 				for i2, v2 in v do
@@ -20906,7 +20906,7 @@ run(function()
         local metalId = metalModel:GetAttribute('Id')
         if not metalId then return false end
         if collectedMetals[metalId] then return false end
-        
+
         collectedMetals[metalId] = true
 
         local success = pcall(function()
@@ -20965,8 +20965,9 @@ run(function()
 								collectedThisCycle = true
 								if CollectionDelay.Enabled and DelaySlider.Value > 0 then
 									task.wait(DelaySlider.Value)
+								else
+									task.wait(0.15)
 								end
-								task.wait(0.15)
 							end
 						end
 					end
@@ -21015,19 +21016,9 @@ run(function()
             if LimitToItem and LimitToItem.Object then LimitToItem.Object.Visible = callback end
             if Animation and Animation.Object then Animation.Object.Visible = callback end
             if CollectionDelay and CollectionDelay.Object then CollectionDelay.Object.Visible = callback end
-            if DelaySlider and DelaySlider.Object then DelaySlider.Object.Visible = (callback and CollectionDelay.Enabled) end
             if RangeSlider and RangeSlider.Object then RangeSlider.Object.Visible = callback end
-
-            if not callback then
-                if DelaySlider and DelaySlider.Object then
-                    DelaySlider.Object.Visible = false
-                end
-            else
-                if CollectionDelay and CollectionDelay.Enabled then
-                    if DelaySlider and DelaySlider.Object then
-                        DelaySlider.Object.Visible = true
-                    end
-                end
+            if DelaySlider and DelaySlider.Object then
+                DelaySlider.Object.Visible = callback and CollectionDelay and CollectionDelay.Enabled
             end
             
             if MetalDetector.Enabled then
@@ -21407,7 +21398,7 @@ run(function()
 	local jumps = 0
 	
 	InfiniteJump = vape.Categories.Blatant:CreateModule({
-		Name = "Infinite Jump",
+		Name = "InfiniteJump",
 		Tooltip = "jumpjumpjump",
 		Function = function(callback)
 			if callback then
@@ -21479,7 +21470,7 @@ run(function()
 	end
 	
 	ParticleRemover = vape.Categories.BoostFPS:CreateModule({
-		Name = 'Particle Remover',
+		Name = 'ParticleRemover',
 		Function = function(callback)
 			if callback then
 				local descendants = workspace:GetDescendants()
@@ -21537,7 +21528,7 @@ run(function()
 	end
 	
 	ShadowRemover = vape.Categories.BoostFPS:CreateModule({
-		Name = 'Shadow Remover',
+		Name = 'ShadowRemover',
 		Function = function(callback)
 			if callback then
 				local descendants = workspace:GetDescendants()
@@ -21598,7 +21589,7 @@ run(function()
 	end
 	
 	ArmorRemover = vape.Categories.BoostFPS:CreateModule({
-		Name = 'Armor Remover',
+		Name = 'ArmorRemover',
 		Function = function(callback)
 			if callback then
 				for _, player in game.Players:GetPlayers() do
@@ -21919,7 +21910,7 @@ run(function()
 	end
 	
 	PotatoMode = vape.Categories.BoostFPS:CreateModule({
-		Name = 'Potato Mode',
+		Name = 'PotatoMode',
 		Function = function(callback)
 			if callback then
 				processExistingBlocks(true)
@@ -34891,7 +34882,7 @@ run(function()
                 end
             end
         end,
-        Tooltip = 'Disables snow weather particles for better FPS (in testing rn not 100%)'
+        Tooltip = 'Disables snow weather particles for better FPS (in testing rn not 100% sure)'
     })
 
     vape:Clean(function()
