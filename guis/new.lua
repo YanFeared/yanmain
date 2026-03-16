@@ -3787,7 +3787,9 @@ function mainapi:CreateCategory(categorysettings)
 			Index = getTableSize(mainapi.Modules),
 			ExtraText = modulesettings.ExtraText,
 			Name = modulesettings.Name,
-			Category = categorysettings.Name
+			Category = categorysettings.Name,
+			KeybindMode = "Toggle", 
+			HoldCount = 0       
 		}
 
 		local hovered = false
@@ -3809,8 +3811,6 @@ function mainapi:CreateCategory(categorysettings)
 		gradient.Parent = modulebutton
 		local modulechildren = Instance.new('Frame')
 		local bind = Instance.new('TextButton')
-		addTooltip(modulebutton, modulesettings.Tooltip)
-		addTooltip(bind, 'Click to bind')
 		bind.Name = 'Bind'
 		bind.Size = UDim2.fromOffset(20, 21)
 		bind.Position = UDim2.new(1, -36, 0, 9)
@@ -3859,7 +3859,28 @@ function mainapi:CreateCategory(categorysettings)
 		bindcovertext.FontFace = uipallet.Font
 		bindcovertext.Parent = bindcover
 		bind.Parent = modulebutton
-		
+		local tooltipValue = Instance.new('StringValue')
+		tooltipValue.Name = 'TooltipText'
+		tooltipValue.Value = 'Click to bind | Right‑click to change mode (currently Toggle)'
+		tooltipValue.Parent = bind
+		bind.MouseEnter:Connect(function()
+			tooltip.Text = tooltipValue.Value
+			tooltip.Visible = true
+			bindtext.Visible = false
+			bindicon.Visible = true
+			bindicon.Image = getcustomasset('newvape/assets/new/edit.png')
+			if not moduleapi.Enabled then bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.16) end
+		end)
+		bind.MouseLeave:Connect(function()
+			tooltip.Visible = false
+			bindtext.Visible = #moduleapi.Bind > 0
+			bindicon.Visible = not bindtext.Visible
+			bindicon.Image = getcustomasset('newvape/assets/new/bind.png')
+			if not moduleapi.Enabled then
+				bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
+			end
+		end)
+
 		local pinbutton = Instance.new('TextButton')
 		pinbutton.Name = 'Pin'
 		pinbutton.Size = UDim2.fromOffset(20, 21)
@@ -3873,7 +3894,7 @@ function mainapi:CreateCategory(categorysettings)
 		pinbutton.Text = ''
 		addCorner(pinbutton, UDim.new(0, 4))
 		addTooltip(pinbutton, 'Pin to top of category')
-		
+
 		local pinicon = Instance.new('ImageLabel')
 		pinicon.Name = 'Icon'
 		pinicon.Size = UDim2.fromOffset(12, 12)
@@ -3883,14 +3904,14 @@ function mainapi:CreateCategory(categorysettings)
 		pinicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
 		pinicon.Parent = pinbutton
 		pinbutton.Parent = modulebutton
-		
+
 		moduleapi.Pinned = false
 		moduleapi.FavoriteButton = nil
-		
+
 		local function togglePin()
 			moduleapi.Pinned = not moduleapi.Pinned
 			pinicon.ImageColor3 = moduleapi.Pinned and uipallet.Text or color.Dark(uipallet.Text, 0.43)
-			
+
 			if moduleapi.Pinned then
 				if mainapi.Categories.Favorites and mainapi.Categories.Favorites.Children then
 					local favButton = Instance.new('TextButton')
@@ -3904,12 +3925,12 @@ function mainapi:CreateCategory(categorysettings)
 					favButton.TextColor3 = moduleapi.Enabled and uipallet.Text or color.Dark(uipallet.Text, 0.16)
 					favButton.TextSize = 14
 					favButton.FontFace = uipallet.Font
-					
+
 					local favGradient = Instance.new('UIGradient')
 					favGradient.Rotation = 90
 					favGradient.Enabled = moduleapi.Enabled
 					favGradient.Parent = favButton
-					
+
 					local tag = Instance.new('TextLabel')
 					tag.Size = UDim2.fromOffset(55, 12)
 					tag.Position = UDim2.new(1, -60, 0, 2)
@@ -3922,11 +3943,11 @@ function mainapi:CreateCategory(categorysettings)
 					tag.FontFace = uipallet.Font
 					tag.Parent = favButton
 					addCorner(tag, UDim.new(0, 3))
-					
+
 					favButton.MouseButton1Click:Connect(function()
 						moduleapi:Toggle()
 					end)
-					
+
 					favButton.MouseButton2Click:Connect(function()
 						local cat = mainapi.Categories[categorysettings.Name]
 						if cat then
@@ -3937,7 +3958,7 @@ function mainapi:CreateCategory(categorysettings)
 							modulechildren.Visible = true
 						end
 					end)
-					
+
 					favButton.Parent = mainapi.Categories.Favorites.Children
 					moduleapi.FavoriteButton = favButton
 				end
@@ -3947,28 +3968,28 @@ function mainapi:CreateCategory(categorysettings)
 					moduleapi.FavoriteButton = nil
 				end
 			end
-			
+
 			local sorting = {}
 			for _, v in mainapi.Modules do
 				if v.Category == categorysettings.Name then
 					table.insert(sorting, v)
 				end
 			end
-			
+
 			table.sort(sorting, function(a, b)
 				if a.Pinned ~= b.Pinned then
 					return a.Pinned
 				end
 				return a.Name < b.Name
 			end)
-			
+
 			for i, v in sorting do
 				v.Index = i
 				v.Object.LayoutOrder = i
 				v.Children.LayoutOrder = i
 			end
 		end
-		
+
 		pinbutton.MouseEnter:Connect(function()
 			pinicon.ImageColor3 = moduleapi.Pinned and uipallet.Text or color.Dark(uipallet.Text, 0.16)
 		end)
@@ -3978,7 +3999,7 @@ function mainapi:CreateCategory(categorysettings)
 		pinbutton.MouseButton1Click:Connect(function()
 			togglePin()
 		end)
-		
+
 		local dotsbutton = Instance.new('TextButton')
 		dotsbutton.Name = 'Dots'
 		dotsbutton.Size = UDim2.fromOffset(25, 40)
@@ -4016,6 +4037,50 @@ function mainapi:CreateCategory(categorysettings)
 		divider.Parent = modulebutton
 		modulesettings.Function = modulesettings.Function or function() end
 		addMaid(moduleapi)
+		local function updateUI(state, multiple)
+			divider.Visible = state
+			gradient.Enabled = state
+			modulebutton.TextColor3 = (hovered or modulechildren.Visible) and uipallet.Text or color.Dark(uipallet.Text, 0.16)
+			modulebutton.BackgroundColor3 = (hovered or modulechildren.Visible) and color.Light(uipallet.Main, 0.02) or uipallet.Main
+			dots.ImageColor3 = state and Color3.fromRGB(50, 50, 50) or color.Light(uipallet.Main, 0.37)
+			bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
+			bindtext.TextColor3 = color.Dark(uipallet.Text, 0.43)
+
+			if moduleapi.FavoriteButton then
+				moduleapi.FavoriteButton.TextColor3 = state and uipallet.Text or color.Dark(uipallet.Text, 0.16)
+				moduleapi.FavoriteButton.BackgroundColor3 = state and color.Light(uipallet.Main, 0.02) or uipallet.Main
+				local favGradient = moduleapi.FavoriteButton:FindFirstChildOfClass('UIGradient')
+				if favGradient then
+					favGradient.Enabled = state
+				end
+			end
+
+			if not state then
+				for _, v in moduleapi.Connections do
+					v:Disconnect()
+				end
+				table.clear(moduleapi.Connections)
+			end
+			if not multiple then
+				mainapi:UpdateTextGUI()
+			end
+			task.spawn(modulesettings.Function, state)
+		end
+
+		function moduleapi:SetEnabled(state, multiple)
+			if self.Enabled == state then return end
+			self.Enabled = state
+			updateUI(self.Enabled, multiple)
+		end
+
+		function moduleapi:Toggle(multiple)
+			self.Enabled = not self.Enabled
+			updateUI(self.Enabled, multiple)
+		end
+
+		local function updateTooltipText()
+			tooltipValue.Value = 'Click to bind | Right‑click to change mode (currently ' .. moduleapi.KeybindMode .. ')'
+		end
 
 		function moduleapi:SetBind(tab, mouse)
 			if tab.Mobile then
@@ -4046,66 +4111,25 @@ function mainapi:CreateCategory(categorysettings)
 			pinbutton.Position = UDim2.new(1, -(bind.Size.X.Offset + 28 + 13), 0, 9)
 		end
 
-		function moduleapi:Toggle(multiple)
-			if mainapi.ThreadFix then
-				setthreadidentity(8)
-			end
-			self.Enabled = not self.Enabled
-			divider.Visible = self.Enabled
-			gradient.Enabled = self.Enabled
-			modulebutton.TextColor3 = (hovered or modulechildren.Visible) and uipallet.Text or color.Dark(uipallet.Text, 0.16)
-			modulebutton.BackgroundColor3 = (hovered or modulechildren.Visible) and color.Light(uipallet.Main, 0.02) or uipallet.Main
-			dots.ImageColor3 = self.Enabled and Color3.fromRGB(50, 50, 50) or color.Light(uipallet.Main, 0.37)
-			bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
-			bindtext.TextColor3 = color.Dark(uipallet.Text, 0.43)
-			
-			if self.FavoriteButton then
-				self.FavoriteButton.TextColor3 = self.Enabled and uipallet.Text or color.Dark(uipallet.Text, 0.16)
-				self.FavoriteButton.BackgroundColor3 = self.Enabled and color.Light(uipallet.Main, 0.02) or uipallet.Main
-				local favGradient = self.FavoriteButton:FindFirstChildOfClass('UIGradient')
-				if favGradient then
-					favGradient.Enabled = self.Enabled
-				end
-			end
-			
-			if not self.Enabled then
-				for _, v in self.Connections do
-					v:Disconnect()
-				end
-				table.clear(self.Connections)
-			end
-			if not multiple then
-				mainapi:UpdateTextGUI()
-			end
-			task.spawn(modulesettings.Function, self.Enabled)
-		end
-
 		for i, v in components do
 			moduleapi['Create'..i] = function(_, optionsettings)
 				return v(optionsettings, modulechildren, moduleapi)
 			end
 		end
 
-		bind.MouseEnter:Connect(function()
-			bindtext.Visible = false
-			bindicon.Visible = not bindtext.Visible
-			bindicon.Image = getcustomasset('newvape/assets/new/edit.png')
-			if not moduleapi.Enabled then bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.16) end
+		bind.MouseButton2Click:Connect(function()
+			moduleapi.KeybindMode = (moduleapi.KeybindMode == "Toggle") and "Hold" or "Toggle"
+			moduleapi.HoldCount = 0   
+			updateTooltipText()
 		end)
-		bind.MouseLeave:Connect(function()
-			bindtext.Visible = #moduleapi.Bind > 0
-			bindicon.Visible = not bindtext.Visible
-			bindicon.Image = getcustomasset('newvape/assets/new/bind.png')
-			if not moduleapi.Enabled then
-				bindicon.ImageColor3 = color.Dark(uipallet.Text, 0.43)
-			end
-		end)
+
 		bind.MouseButton1Click:Connect(function()
 			bindcovertext.Text = 'PRESS A KEY TO BIND'
 			bindcover.Size = UDim2.fromOffset(getfontsize(bindcovertext.Text, bindcovertext.TextSize).X + 20, 40)
 			bindcover.Visible = true
 			mainapi.Binding = moduleapi
 		end)
+
 		dotsbutton.MouseEnter:Connect(function()
 			if not moduleapi.Enabled then
 				dots.ImageColor3 = uipallet.Text
@@ -4133,15 +4157,15 @@ function mainapi:CreateCategory(categorysettings)
 								option:Toggle()
 							end
 						elseif option.Type == 'TwoSlider' then
-							option:SetValue(false, option.Default.Min) 
-							option:SetValue(true, option.Default.Max)  
+							option:SetValue(false, option.Default.Min)
+							option:SetValue(true, option.Default.Max)
 						end
 					end
 				end
 				existingReset:Destroy()
 				return
 			end
-			
+
 			local resetCover = Instance.new('ImageLabel')
 			resetCover.Name = 'ResetCover'
 			resetCover.Size = UDim2.fromOffset(180, 40)
@@ -4150,7 +4174,7 @@ function mainapi:CreateCategory(categorysettings)
 			resetCover.ScaleType = Enum.ScaleType.Slice
 			resetCover.SliceCenter = Rect.new(0, 0, 141, 40)
 			resetCover.Parent = modulebutton
-			
+
 			local resetText = Instance.new('TextLabel')
 			resetText.Name = 'Text'
 			resetText.Size = UDim2.new(1, -10, 1, -3)
@@ -4160,7 +4184,7 @@ function mainapi:CreateCategory(categorysettings)
 			resetText.TextSize = 11
 			resetText.FontFace = uipallet.Font
 			resetText.Parent = resetCover
-		
+
 			task.delay(3, function()
 				if resetCover and resetCover.Parent then
 					resetCover:Destroy()
@@ -4215,6 +4239,7 @@ function mainapi:CreateCategory(categorysettings)
 				mainapi.Modules[v].Children.LayoutOrder = i
 			end
 		end
+		updateTooltipText()
 
 		return moduleapi
 	end
@@ -5788,6 +5813,8 @@ function mainapi:Load(skipgui, profile)
 				object:Toggle(true)
 			end
 			object:SetBind(v.Bind)
+			object.KeybindMode = v.KeybindMode or "Toggle"
+			object.HoldCount = 0   
 			object.Object.Bind.Visible = #v.Bind > 0
 			if v.Pinned and not object.Pinned then
 				local pinButton = object.Object:FindFirstChild('Pin')
@@ -5831,7 +5858,7 @@ function mainapi:Load(skipgui, profile)
 	if inputService.TouchEnabled and #self.Keybind == 1 and self.Keybind[1] == 'RightShift' then
 		local button = Instance.new('TextButton')
 		button.Size = UDim2.fromOffset(32, 32)
-		button.Position = UDim2.new(1, -90, 0, 4)
+		button.Position = UDim2.new(1, -210, 0, 4)
 		button.BackgroundColor3 = Color3.new()
 		button.BackgroundTransparency = 0.5
 		button.Text = ''
@@ -5928,7 +5955,8 @@ function mainapi:Save(newprofile)
 			Enabled = v.Enabled,
 			Bind = v.Bind.Button and {Mobile = true, X = v.Bind.Button.Position.X.Offset, Y = v.Bind.Button.Position.Y.Offset} or v.Bind,
 			Options = mainapi:SaveOptions(v, true),
-			Pinned = v.Pinned or false
+			Pinned = v.Pinned or false,
+			KeybindMode = v.KeybindMode or "Toggle"   
 		}
 	end
 
@@ -7060,6 +7088,15 @@ guipane:CreateToggle({
 	Tooltip = 'Shows or hides mobile button (remains clickable when hidden)'
 })
 
+guipane:CreateToggle({
+    Name = 'Auto Reinject',
+    Function = function(callback)
+        shared.VapeIndependent = not callback
+    end,
+    Default = true, 
+    Tooltip = 'Automatically re‑inject after teleporting to another server.'
+})
+
 local notifColorToggle = guipane:CreateToggle({
 	Name = 'Custom Notification Color',
 	Function = function(callback)
@@ -8057,11 +8094,19 @@ mainapi:Clean(inputService.InputBegan:Connect(function(inputObj)
 		local toggled = false
 		for i, v in mainapi.Modules do
 			if checkKeybinds(mainapi.HeldKeybinds, v.Bind, inputObj.KeyCode.Name) then
-				toggled = true
-				if mainapi.ToggleNotifications.Enabled then
-					mainapi:CreateNotification('Module Toggled', i.."<font color='#FFFFFF'> has been </font>"..(not v.Enabled and "<font color='#5AFF5A'>Enabled</font>" or "<font color='#FF5A5A'>Disabled</font>").."<font color='#FFFFFF'>!</font>", 0.75)
+				if v.KeybindMode == "Hold" then
+					v.HoldCount = v.HoldCount + 1
+					if v.HoldCount == 1 then
+						v:SetEnabled(true, true)
+						mainapi:UpdateGUI(mainapi.GUIColor.Hue, mainapi.GUIColor.Sat, mainapi.GUIColor.Value)
+					end
+				else
+					toggled = true
+					if mainapi.ToggleNotifications.Enabled then
+						mainapi:CreateNotification('Module Toggled', i.."<font color='#FFFFFF'> has been </font>"..(not v.Enabled and "<font color='#5AFF5A'>Enabled</font>" or "<font color='#FF5A5A'>Disabled</font>").."<font color='#FFFFFF'>!</font>", 0.75)
+					end
+					v:Toggle(true)
 				end
-				v:Toggle(true)
 			end
 		end
 		if toggled then
@@ -8087,11 +8132,22 @@ mainapi:Clean(inputService.InputEnded:Connect(function(inputObj)
 			mainapi.Binding:SetBind(checkKeybinds(mainapi.HeldKeybinds, mainapi.Binding.Bind, inputObj.KeyCode.Name) and {} or mainapi.HeldKeybinds, true)
 			mainapi.Binding = nil
 		end
-	end
 
-	local ind = table.find(mainapi.HeldKeybinds, inputObj.KeyCode.Name)
-	if ind then
-		table.remove(mainapi.HeldKeybinds, ind)
+		local ind = table.find(mainapi.HeldKeybinds, inputObj.KeyCode.Name)
+		if ind then
+			table.remove(mainapi.HeldKeybinds, ind)
+		end
+		for i, v in mainapi.Modules do
+			if v.KeybindMode == "Hold" then
+				if table.find(v.Bind, inputObj.KeyCode.Name) then
+					v.HoldCount = math.max(v.HoldCount - 1, 0)
+					if v.HoldCount == 0 then
+						v:SetEnabled(false, true)
+						mainapi:UpdateGUI(mainapi.GUIColor.Hue, mainapi.GUIColor.Sat, mainapi.GUIColor.Value)
+					end
+				end
+			end
+		end
 	end
 end))
 
