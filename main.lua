@@ -43,10 +43,22 @@ local playersService = cloneref(game:GetService('Players'))
 
 local function downloadFile(path, func)
     if not isfile(path) then
-        local suc, res = pcall(function()
-            return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/' .. readfile('newvape/profiles/commit.txt') .. '/' .. select(1, path:gsub('newvape/', '')), true)
-        end)
-        if not suc or res == '404: Not Found' then error(res) end
+        local res
+        local success = false
+        for attempt = 1, 3 do
+            local suc, result = pcall(function()
+                return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/' .. readfile('newvape/profiles/commit.txt') .. '/' .. select(1, path:gsub('newvape/', '')), true)
+            end)
+            if suc and result ~= '404: Not Found' then
+                res = result
+                success = true
+                break
+            end
+            task.wait(1) 
+        end
+        if not success then
+            error('Failed to download ' .. path .. ' after 3 attempts')
+        end
         if path:find('.lua') then
             res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n' .. res
         end
@@ -57,7 +69,7 @@ end
 
 local function finishLoading()
 	vape.Init = nil
-	vape:Load(false, shared.VapeCurrentProfile)
+	vape:Load()
 	task.spawn(function()
 		repeat
 			vape:Save()
@@ -66,34 +78,32 @@ local function finishLoading()
 	end)
 
 	local teleportedServers
-    vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
-        if (not teleportedServers) and (not shared.VapeIndependent) and vape.AutoTeleport.Enabled then
-            teleportedServers = true
-            local teleportScript = [[
-                shared.vapereload = true
-                if shared.VapeDeveloper then
-                    loadstring(readfile('newvape/loader.lua'), 'loader')()
-                else
-                    loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
-                end
-            ]]
-            if shared.VapeDeveloper then
-                teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
-            end
-            if shared.VapeCustomProfile then
-                teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
-            end
-            if shared.VapeCurrentProfile then
-                teleportScript = 'shared.VapeCurrentProfile = "'..shared.VapeCurrentProfile..'"\n'..teleportScript
-            end
-            vape:Save()
-            queue_on_teleport(teleportScript)
-        end
-    end))
+	vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
+		if (not teleportedServers) and (not shared.VapeIndependent) then
+			teleportedServers = true
+			local teleportScript = [[
+				shared.vapereload = true
+				if shared.VapeDeveloper then
+					loadstring(readfile('newvape/loader.lua'), 'loader')()
+				else
+					loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
+				end
+			]]
+			if shared.VapeDeveloper then
+				teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
+			end
+			if shared.VapeCustomProfile then
+				teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
+			end
+			vape:Save()
+			queue_on_teleport(teleportScript)
+		end
+	end))
 
     if not shared.vapereload then
         if not vape.Categories then return end
         if vape.Categories.Main.Options['GUI bind indicator'].Enabled then
+            local name = shared.ValidatedUsername and ('wsg, ' .. shared.ValidatedUsername .. ' :D ') or 'welcome '
             vape:CreateNotification('[AEROV4] Finished Loading', name .. (vape.VapeButton and 'Press the button in the top right to open GUI' or 'Press ' .. table.concat(vape.Keybind, ' + '):upper() .. ' to open GUI'), 5)
         end
     end
