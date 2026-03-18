@@ -5791,7 +5791,7 @@ run(function()
 
 		if LegitAura.Enabled then
 			local lastSwing = bedwars.SwordController.lastSwing or 0
-			local swingDelay = SwingTime.Enabled and SwingTimeSlider.Value or 0.2
+			local swingDelay = SwingTime.Enabled and math.max(SwingTimeSlider.Value, 0.2) or 0.2
 			if (tick() - lastSwing) > swingDelay then return false end
 		end
 
@@ -6751,7 +6751,7 @@ run(function()
 
 		if LegitAura.Enabled then
 			local lastSwing = bedwars.SwordController.lastSwing or 0
-			if (tick() - lastSwing) > ChargeTime.Value then return false end
+			if (tick() - lastSwing) > math.max(ChargeTime.Value, 0.2) then return false end
 		end
 
 		return sword, meta
