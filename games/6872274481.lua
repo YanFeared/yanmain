@@ -1796,9 +1796,16 @@ run(function()
 	local ShakeAmount
 	local ShopCheck
 	local WorkWithProjectiles
-
 	local lockedTarget = nil
 	local rng = Random.new()
+
+	local function isEntityAlive(ent)
+		if not ent or not ent.Character then return false end
+		local humanoid = ent.Character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return false end
+		local health = ent.Character:GetAttribute("Health") or humanoid.Health
+		return health and health > 0
+	end
 
 	local function isFirstPerson()
 		local head = lplr.Character and lplr.Character:FindFirstChild("Head")
@@ -1819,7 +1826,7 @@ run(function()
 			'LeftUpperLeg', 'RightUpperLeg', 'LeftLowerLeg', 'RightLowerLeg',
 			'LeftFoot', 'RightFoot', 'LeftHand', 'RightHand'
 		}
-		for _, partName in partNames do
+		for _, partName in ipairs(partNames) do
 			local part = character:FindFirstChild(partName)
 			if part then
 				local dirToPart = (part.Position - mouseRay.Origin).Unit
@@ -1874,16 +1881,21 @@ run(function()
 						return
 					end
 
-					local ent
+					local ent = nil
+
 					if PriorityMode.Enabled and lockedTarget then
-						local delta = (lockedTarget.RootPart.Position - entitylib.character.RootPart.Position)
-						local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
-						local flatDelta = delta * Vector3.new(1, 0, 1)
-						if flatDelta.Magnitude > 0.001 then
-							local angle = math.acos(math.clamp(localfacing:Dot(flatDelta.Unit), -1, 1))
-							local dist = delta.Magnitude
-							if dist <= Distance.Value and angle < (math.rad(AngleSlider.Value) / 2) then
-								ent = lockedTarget
+						if isEntityAlive(lockedTarget) then
+							local delta = (lockedTarget.RootPart.Position - entitylib.character.RootPart.Position)
+							local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
+							local flatDelta = delta * Vector3.new(1, 0, 1)
+							if flatDelta.Magnitude > 0.001 then
+								local angle = math.acos(math.clamp(localfacing:Dot(flatDelta.Unit), -1, 1))
+								local dist = delta.Magnitude
+								if dist <= Distance.Value and angle < (math.rad(AngleSlider.Value) / 2) then
+									ent = lockedTarget
+								else
+									lockedTarget = nil
+								end
 							else
 								lockedTarget = nil
 							end
@@ -1901,19 +1913,26 @@ run(function()
 							NPCs = Targets.NPCs.Enabled,
 							Sort = sortmethods[Sort.Value]
 						})
+						if ent and not isEntityAlive(ent) then
+							ent = nil
+						end
 						if PriorityMode.Enabled and ent then
 							lockedTarget = ent
 						end
 					end
 
 					if KillauraTarget.Enabled and store.KillauraTarget then
-						ent = store.KillauraTarget
-						if PriorityMode.Enabled then
-							lockedTarget = ent
+						if isEntityAlive(store.KillauraTarget) then
+							ent = store.KillauraTarget
+							if PriorityMode.Enabled then
+								lockedTarget = ent
+							end
+						else
+							store.KillauraTarget = nil
 						end
 					end
 
-					if ent and ent.RootPart then
+					if ent and ent.RootPart and isEntityAlive(ent) then
 						local delta = (ent.RootPart.Position - entitylib.character.RootPart.Position)
 						local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
 						local flatDelta = delta * Vector3.new(1, 0, 1)
@@ -1959,6 +1978,15 @@ run(function()
 						end
 
 						local targetCFrame = CFrame.lookAt(gameCamera.CFrame.p, aimPosition)
+						local maxAnglePerFrame = math.rad(aimSpeed * 15) 
+						local currentLook = gameCamera.CFrame.LookVector
+						local desiredLook = (aimPosition - gameCamera.CFrame.p).Unit
+						local angleBetween = math.acos(math.clamp(currentLook:Dot(desiredLook), -1, 1))
+						if angleBetween > maxAnglePerFrame then
+							local rotAxis = currentLook:Cross(desiredLook).Unit
+							local partialRotation = CFrame.fromAxisAngle(rotAxis, maxAnglePerFrame)
+							targetCFrame = CFrame.new(gameCamera.CFrame.p, gameCamera.CFrame.p + (partialRotation * currentLook))
+						end
 						gameCamera.CFrame = gameCamera.CFrame:Lerp(targetCFrame, aimSpeed * dt)
 					else
 						if PriorityMode.Enabled then
@@ -1986,6 +2014,18 @@ run(function()
 	Sort = AimAssist:CreateDropdown({
 		Name = 'Target Mode',
 		List = methods
+	})
+	AimPart = AimAssist:CreateDropdown({
+		Name = 'Aim Part',
+		List = {'Torso', 'Head', 'Closest'},
+		Default = 'Torso'
+	})
+
+	ViewMode = AimAssist:CreateDropdown({
+		Name = 'View Mode',
+		List = {'First Person', 'Third Person', 'Both'},
+		Default = 'Both',
+		Tooltip = 'Only aim in first person, third person, or always'
 	})
 	AimSpeed = AimAssist:CreateSlider({
 		Name = 'Aim Speed',
@@ -2016,24 +2056,10 @@ run(function()
 		Name = 'Use killaura target'
 	})
 	StrafeIncrease = AimAssist:CreateToggle({Name = 'Strafe increase'})
-
-	AimPart = AimAssist:CreateDropdown({
-		Name = 'Aim Part',
-		List = {'Torso', 'Head', 'Closest'},
-		Default = 'Torso'
-	})
-
-	ViewMode = AimAssist:CreateDropdown({
-		Name = 'View Mode',
-		List = {'First Person', 'Third Person', 'Both'},
-		Default = 'Both',
-		Tooltip = 'Only aim in first person, third person, or always'
-	})
-
 	PriorityMode = AimAssist:CreateToggle({
 		Name = 'Priority Mode',
 		Default = false,
-		Tooltip = 'Lock onto one target until they leave range'
+		Tooltip = 'Lock onto one target until they leave range or die'
 	})
 
 	ShakeToggle = AimAssist:CreateToggle({
@@ -2741,111 +2767,19 @@ run(function()
             Darker = true
         })
 
-		task.defer(function()
-			if BlockCPS and BlockCPS.Object then
-				BlockCPS.Object.Visible = PlaceBlocksToggle and PlaceBlocksToggle.Enabled
-			end
-			updateModeVisibility()  
-		end)
-
     else
         local AutoClicker
-        local ACMode
-        local CPS
         local BlockCPS = {}
         local SwordCPS = {}
-        local ProjectileCPS = {}
         local PlaceBlocksToggle
         local SwingSwordToggle
-        local ShootProjectilesToggle
         local Thread
-        local KeybindToggle
-        local KeybindList
-        local MouseBindToggle
-        local MouseBindList
-        local KeybindMode
-        local CurrentKeybind = Enum.KeyCode.LeftAlt
-        local CurrentMouseBind = Enum.UserInputType.MouseButton2
-        local UseMouseBind = false
-        local KeybindEnabled = false
-        local KeybindHeld = false
-        local KeybindActive = false
-        local ActivationScheduled = nil
+        local ActivationScheduled
         local MIN_HOLD_TIME = 0.12
 
         local task_wait = task.wait
         local task_spawn = task.spawn
-        local tick = tick
         local workspace_GetServerTimeNow = function() return workspace:GetServerTimeNow() end
-        local projectileRemote = {InvokeServer = function() end}
-        local FireDelays = {}
-
-        task.spawn(function()
-            projectileRemote = bedwars.Client:Get(remotes.FireProjectile).instance
-        end)
-
-        local ammoCache = {}
-        local lastAmmoCheck = 0
-        local function getAmmo(check)
-            local now = tick()
-            if now - lastAmmoCheck < 0.5 then
-                local cached = ammoCache[check]
-                if cached then return cached end
-            end
-            for _, item in store.inventory.inventory.items do
-                if check.ammoItemTypes and table.find(check.ammoItemTypes, item.itemType) then
-                    ammoCache[check] = item.itemType
-                    lastAmmoCheck = now
-                    return item.itemType
-                end
-            end
-            return nil
-        end
-
-        local function shootProjectile()
-            if not store.hand or not store.hand.tool then return end
-            if not isHoldingProjectile() then return end
-            local tool = store.hand.tool
-            local itemMeta = bedwars.ItemMeta[tool.Name]
-            if not itemMeta or not itemMeta.projectileSource then return end
-            local projectileSource = itemMeta.projectileSource
-            local ammo = getAmmo(projectileSource)
-            if not ammo then return end
-            local projectileType = projectileSource.projectileType
-            if type(projectileType) == 'function' then
-                local success, result = pcall(projectileType, ammo)
-                if success then projectileType = result end
-            end
-            if not projectileType then return end
-            local projectileMeta = bedwars.ProjectileMeta[projectileType]
-            if not projectileMeta then return end
-            local now = tick()
-            if (FireDelays[tool.Name] or 0) > now then return end
-            local pos = entitylib.character.RootPart.Position
-            local lookVector = gameCamera.CFrame.LookVector
-            local shootPosition = (gameCamera.CFrame * CFrame.new(Vector3.new(-bedwars.BowConstantsTable.RelX, -bedwars.BowConstantsTable.RelY, -bedwars.BowConstantsTable.RelZ))).Position
-            task_spawn(function()
-                local id = httpService:GenerateGUID(true)
-                local projSpeed = projectileMeta.launchVelocity or 100
-                local toolName = tool.Name
-                local isCrossbow = toolName:find('crossbow') ~= nil
-                if isCrossbow then
-                    bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_CROSSBOW_FIRE)
-                    bedwars.GameAnimationUtil:playAnimation(lplr, bedwars.AnimationType.CROSSBOW_FIRE)
-                elseif toolName:find('bow') then
-                    bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_CROSSBOW_FIRE)
-                    bedwars.GameAnimationUtil:playAnimation(lplr, bedwars.AnimationType.BOW_FIRE)
-                end
-                bedwars.ProjectileController:createLocalProjectile(projectileMeta, ammo, projectileType, shootPosition, id, lookVector * projSpeed, {drawDurationSeconds = 1})
-                local res = projectileRemote:InvokeServer(tool, ammo, projectileType, shootPosition, pos, lookVector * projSpeed, id, {drawDurationSeconds = 1, shotId = httpService:GenerateGUID(false)}, workspace_GetServerTimeNow() - 0.045)
-                if res then
-                    local shoot = projectileSource.launchSound
-                    shoot = shoot and shoot[math.random(1, #shoot)] or nil
-                    if shoot then bedwars.SoundManager:playSound(shoot) end
-                end
-            end)
-            FireDelays[tool.Name] = now + (projectileSource.fireDelaySec or 0.5)
-        end
 
         local function getSafeCPS()
             local toolType = store.hand and store.hand.toolType or nil
@@ -2853,109 +2787,8 @@ run(function()
                 return BlockCPS
             elseif toolType == 'sword' and SwingSwordToggle and SwingSwordToggle.Enabled and SwordCPS and SwordCPS.GetRandomValue then
                 return SwordCPS
-            elseif ShootProjectilesToggle and ShootProjectilesToggle.Enabled and isHoldingProjectile() and ProjectileCPS and ProjectileCPS.GetRandomValue then
-                return ProjectileCPS
-            elseif CPS and CPS.GetRandomValue then
-                return CPS
             end
             return nil
-        end
-
-        local function UpdateKeybindState()
-            if not KeybindEnabled then
-                KeybindActive = true
-                return
-            end
-            if KeybindMode.Value == 'Toggle' then
-                return
-            elseif KeybindMode.Value == 'Hold' then
-                if UseMouseBind then
-                    KeybindActive = inputService:IsMouseButtonPressed(CurrentMouseBind)
-                else
-                    KeybindActive = inputService:IsKeyDown(CurrentKeybind)
-                end
-            end
-        end
-
-        local function AutoClickVape()
-            if Thread then task.cancel(Thread) end
-            local initialCPS = getSafeCPS()
-            if not initialCPS then return end
-            Thread = task.delay(1 / initialCPS.GetRandomValue(), function()
-                repeat
-                    if not bedwars.AppController:isLayerOpen(bedwars.UILayers.MAIN) then
-                        local blockPlacer = bedwars.BlockPlacementController and bedwars.BlockPlacementController.blockPlacer
-                        local toolType = store.hand and store.hand.toolType
-                        if toolType == 'block' and blockPlacer then
-                            if (workspace_GetServerTimeNow() - bedwars.BlockCpsController.lastPlaceTimestamp) >= ((1 / 12) * 0.5) then
-                                local mouseinfo = blockPlacer.clientManager:getBlockSelector():getMouseInfo(0)
-                                if mouseinfo and mouseinfo.placementPosition == mouseinfo.placementPosition then
-                                    task.spawn(blockPlacer.placeBlock, blockPlacer, mouseinfo.placementPosition)
-                                end
-                            end
-                        elseif toolType == 'sword' then
-                            bedwars.SwordController:swingSwordAtMouse(0.39)
-                        end
-                    end
-                    local currentCPS = getSafeCPS()
-                    task_wait(1 / (currentCPS and currentCPS.GetRandomValue() or 7))
-                until not AutoClicker.Enabled
-            end)
-        end
-
-        local function AutoClickAero()
-            if Thread then task.cancel(Thread) end
-            Thread = task_spawn(function()
-                local toolCheckCounter = 0
-                repeat
-                    if KeybindEnabled and KeybindMode.Value == 'Hold' then
-                        if toolCheckCounter % 3 == 0 then
-                            UpdateKeybindState()
-                        end
-                        if not KeybindActive then
-                            task_wait(0.1)
-                            toolCheckCounter += 1
-                            continue
-                        end
-                    end
-
-                    toolCheckCounter += 1
-
-                    if not bedwars.AppController:isLayerOpen(bedwars.UILayers.MAIN) and not _G.autoShootLock then
-                        local toolType = store.hand and store.hand.toolType
-                        if PlaceBlocksToggle.Enabled and toolType == 'block' then
-                            local blockPlacer = bedwars.BlockPlacementController and bedwars.BlockPlacementController.blockPlacer
-                            if blockPlacer then
-                                if (workspace_GetServerTimeNow() - bedwars.BlockCpsController.lastPlaceTimestamp) >= ((1 / 12) * 0.5) then
-                                    local mouseinfo = blockPlacer.clientManager:getBlockSelector():getMouseInfo(0)
-                                    if mouseinfo and mouseinfo.placementPosition == mouseinfo.placementPosition then
-                                        task_spawn(blockPlacer.placeBlock, blockPlacer, mouseinfo.placementPosition)
-                                    end
-                                end
-                            end
-                        elseif SwingSwordToggle.Enabled and toolType == 'sword' then
-                            bedwars.SwordController:swingSwordAtMouse(0.39)
-                        elseif ShootProjectilesToggle.Enabled and isHoldingProjectile() then
-                            shootProjectile()
-                        end
-                    end
-
-                    local currentCPS = getSafeCPS()
-                    task_wait(1 / (currentCPS and currentCPS.GetRandomValue() or 7))
-                until not AutoClicker.Enabled
-            end)
-        end
-
-        local function AutoClick()
-            if ACMode.Value == 'Vape' then
-                AutoClickVape()
-            else
-                AutoClickAero()
-            end
-        end
-
-        local function StartAutoClick()
-            if not Thread then AutoClick() end
         end
 
         local function StopAutoClick()
@@ -2969,141 +2802,60 @@ run(function()
             end
         end
 
-        local function ToggleKeybind()
-            if KeybindMode.Value == 'Toggle' then
-                KeybindHeld = not KeybindHeld
-                KeybindActive = KeybindHeld
-                if KeybindActive then StartAutoClick() else StopAutoClick() end
-            end
-        end
+        local function AutoClick()
+            if Thread then task.cancel(Thread) end
 
-        local lastToggleRestart = 0
-        local function SafeToggleRestart()
-            local now = tick()
-            if now - lastToggleRestart < 0.2 then return end
-            lastToggleRestart = now
-            if AutoClicker.Enabled then
-                AutoClicker:Toggle()
-                task_wait(0.05)
-                AutoClicker:Toggle()
-            end
-        end
+            Thread = task_spawn(function()
+                repeat
+                    if not bedwars.AppController:isLayerOpen(bedwars.UILayers.MAIN) then
+                        local toolType = store.hand and store.hand.toolType
 
-		local function updateModeVisibility()
-			local isAero = ACMode.Value == 'Aero'
-			if SwingSwordToggle and SwingSwordToggle.Object then SwingSwordToggle.Object.Visible = isAero end
-			if SwordCPS and SwordCPS.Object then SwordCPS.Object.Visible = isAero and (SwingSwordToggle and SwingSwordToggle.Enabled) end
-			if ShootProjectilesToggle and ShootProjectilesToggle.Object then ShootProjectilesToggle.Object.Visible = isAero end
-			if ProjectileCPS and ProjectileCPS.Object then ProjectileCPS.Object.Visible = isAero and (ShootProjectilesToggle and ShootProjectilesToggle.Enabled) end
-			if KeybindToggle and KeybindToggle.Object then KeybindToggle.Object.Visible = isAero end
-			if KeybindMode and KeybindMode.Object then KeybindMode.Object.Visible = isAero and KeybindEnabled end
-			if KeybindList and KeybindList.Object then KeybindList.Object.Visible = isAero and KeybindEnabled and not UseMouseBind end
-			if MouseBindToggle and MouseBindToggle.Object then MouseBindToggle.Object.Visible = isAero and KeybindEnabled end
-			if MouseBindList and MouseBindList.Object then MouseBindList.Object.Visible = isAero and KeybindEnabled and UseMouseBind end
-		end
+                        if toolType == 'block' and PlaceBlocksToggle and PlaceBlocksToggle.Enabled then
+                            local blockPlacer = bedwars.BlockPlacementController and bedwars.BlockPlacementController.blockPlacer
+                            if blockPlacer then
+                                if (workspace_GetServerTimeNow() - bedwars.BlockCpsController.lastPlaceTimestamp) >= ((1 / 12) * 0.5) then
+                                    local mouseinfo = blockPlacer.clientManager:getBlockSelector():getMouseInfo(0)
+                                    if mouseinfo and mouseinfo.placementPosition == mouseinfo.placementPosition then
+                                        task_spawn(blockPlacer.placeBlock, blockPlacer, mouseinfo.placementPosition)
+                                    end
+                                end
+                            end
+                        elseif toolType == 'sword' and SwingSwordToggle and SwingSwordToggle.Enabled then
+                            bedwars.SwordController:swingSwordAtMouse(0.39)
+                        end
+                    end
+
+                    local currentCPS = getSafeCPS()
+                    task_wait(1 / (currentCPS and currentCPS.GetRandomValue() or 7))
+                until not AutoClicker.Enabled
+            end)
+        end
 
         AutoClicker = vape.Categories.Combat:CreateModule({
             Name = 'AutoClicker',
             Function = function(callback)
                 if callback then
-                    if KeybindEnabled and ACMode.Value == 'Aero' then
-                        AutoClicker:Clean(inputService.InputBegan:Connect(function(input)
-                            if UseMouseBind then
-                                if input.UserInputType == CurrentMouseBind then
-                                    if KeybindMode.Value == 'Hold' then StartAutoClick()
-                                    elseif KeybindMode.Value == 'Toggle' then ToggleKeybind() end
+                    AutoClicker:Clean(inputService.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            ActivationScheduled = task.delay(MIN_HOLD_TIME, function()
+                                ActivationScheduled = nil
+                                if inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                                    AutoClick()
                                 end
-                            else
-                                if input.UserInputType == Enum.UserInputType.Keyboard then
-                                    if input.KeyCode == CurrentKeybind then
-                                        if KeybindMode.Value == 'Hold' then StartAutoClick()
-                                        elseif KeybindMode.Value == 'Toggle' then ToggleKeybind() end
-                                    end
-                                end
-                            end
-                        end))
-                        AutoClicker:Clean(inputService.InputEnded:Connect(function(input)
-                            if KeybindMode.Value == 'Hold' then
-                                if UseMouseBind then
-                                    if input.UserInputType == CurrentMouseBind then StopAutoClick() end
-                                else
-                                    if input.UserInputType == Enum.UserInputType.Keyboard then
-                                        if input.KeyCode == CurrentKeybind then StopAutoClick() end
-                                    end
-                                end
-                            end
-                        end))
-                    else
-                        AutoClicker:Clean(inputService.InputBegan:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                if not _G.autoShootLock then
-                                    ActivationScheduled = task.delay(MIN_HOLD_TIME, function()
-                                        ActivationScheduled = nil
-                                        if inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-                                            AutoClick()
-                                        end
-                                    end)
-                                end
-                            end
-                        end))
-                        AutoClicker:Clean(inputService.InputEnded:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                if ActivationScheduled then
-                                    task.cancel(ActivationScheduled)
-                                    ActivationScheduled = nil
-                                end
-                                if Thread then
-                                    task.cancel(Thread)
-                                    Thread = nil
-                                end
-                            end
-                        end))
-                    end
+                            end)
+                        end
+                    end))
+
+                    AutoClicker:Clean(inputService.InputEnded:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            StopAutoClick()
+                        end
+                    end))
                 else
                     StopAutoClick()
-                    ammoCache = {}
-                    lastToolName = nil
                 end
             end,
-            Tooltip = 'Clicks for you'
-        })
-
-        ACMode = AutoClicker:CreateDropdown({
-            Name = 'AC Mode',
-            List = {'Vape', 'Aero'},
-            Default = 'Vape',
-            Function = function(val)
-                StopAutoClick()
-                KeybindHeld = false
-                KeybindActive = false
-                updateModeVisibility()
-                SafeToggleRestart()
-            end
-        })
-
-        CPS = AutoClicker:CreateTwoSlider({
-            Name = 'CPS',
-            Min = 1,
-            Max = 9,
-            DefaultMin = 7,
-            DefaultMax = 7
-        })
-
-        PlaceBlocksToggle = AutoClicker:CreateToggle({
-            Name = 'Place Blocks',
-            Default = true,
-            Function = function(callback)
-                if BlockCPS.Object then BlockCPS.Object.Visible = callback end
-            end
-        })
-
-        BlockCPS = AutoClicker:CreateTwoSlider({
-            Name = 'Block CPS',
-            Min = 1,
-            Max = 20,
-            DefaultMin = 12,
-            DefaultMax = 12,
-            Darker = true
+            Tooltip = 'Hold left click to automatically click'
         })
 
         SwingSwordToggle = AutoClicker:CreateToggle({
@@ -3123,119 +2875,24 @@ run(function()
             Darker = true
         })
 
-        ShootProjectilesToggle = AutoClicker:CreateToggle({
-            Name = 'Shoot Projectiles',
+        PlaceBlocksToggle = AutoClicker:CreateToggle({
+            Name = 'Place Blocks',
             Default = true,
             Function = function(callback)
-                if ProjectileCPS.Object then ProjectileCPS.Object.Visible = callback end
+                if BlockCPS.Object then BlockCPS.Object.Visible = callback end
             end
         })
 
-        ProjectileCPS = AutoClicker:CreateTwoSlider({
-            Name = 'Projectile CPS',
+        BlockCPS = AutoClicker:CreateTwoSlider({
+            Name = 'Block CPS',
             Min = 1,
-            Max = 5,
-            DefaultMin = 3,
-            DefaultMax = 3,
+            Max = 20,
+            DefaultMin = 12,
+            DefaultMax = 12,
             Darker = true
         })
-
-        KeybindToggle = AutoClicker:CreateToggle({
-            Name = 'Use Keybind',
-            Default = false,
-            Function = function(callback)
-                KeybindEnabled = callback
-                if KeybindList.Object then KeybindList.Object.Visible = callback and not UseMouseBind end
-                if MouseBindToggle.Object then MouseBindToggle.Object.Visible = callback end
-                if MouseBindList.Object then MouseBindList.Object.Visible = callback and UseMouseBind end
-                if KeybindMode.Object then KeybindMode.Object.Visible = callback end
-                SafeToggleRestart()
-            end
-        })
-
-        KeybindMode = AutoClicker:CreateDropdown({
-            Name = 'Keybind Mode',
-            List = {'Hold', 'Toggle'},
-            Default = 'Hold',
-            Darker = true,
-            Visible = false,
-            Function = function(value)
-                KeybindHeld = false
-                KeybindActive = false
-                SafeToggleRestart()
-            end
-        })
-
-        KeybindList = AutoClicker:CreateDropdown({
-            Name = 'Keybind',
-            List = {'LeftAlt','LeftControl','LeftShift','RightAlt','RightControl','RightShift','Space','CapsLock','Tab','E','Q','R','F','G','X','Z','V','B'},
-            Default = 'LeftAlt',
-            Darker = true,
-            Visible = false,
-            Function = function(value)
-                CurrentKeybind = Enum.KeyCode[value]
-                KeybindHeld = false
-                KeybindActive = false
-                SafeToggleRestart()
-            end
-        })
-
-        MouseBindToggle = AutoClicker:CreateToggle({
-            Name = 'Use Mouse Button',
-            Default = false,
-            Visible = false,
-            Function = function(callback)
-                UseMouseBind = callback
-                if KeybindList.Object then KeybindList.Object.Visible = KeybindEnabled and not callback end
-                if MouseBindList.Object then MouseBindList.Object.Visible = KeybindEnabled and callback end
-                KeybindHeld = false
-                KeybindActive = false
-                SafeToggleRestart()
-            end
-        })
-
-        MouseBindList = AutoClicker:CreateDropdown({
-            Name = 'Mouse Button',
-            List = {'Right Click', 'Middle Click'},
-            Default = 'Right Click',
-            Darker = true,
-            Visible = false,
-            Function = function(value)
-                local map = {['Right Click'] = Enum.UserInputType.MouseButton2, ['Middle Click'] = Enum.UserInputType.MouseButton3}
-                CurrentMouseBind = map[value]
-                KeybindHeld = false
-                KeybindActive = false
-                SafeToggleRestart()
-            end
-        })
-
-        updateModeVisibility()
-
-        task.defer(function()
-            if BlockCPS and BlockCPS.Object then
-                BlockCPS.Object.Visible = true
-            end
-            if SwordCPS and SwordCPS.Object then
-                SwordCPS.Object.Visible = true
-            end
-            if ProjectileCPS and ProjectileCPS.Object then
-                ProjectileCPS.Object.Visible = true
-            end
-            if KeybindMode and KeybindMode.Object then
-                KeybindMode.Object.Visible = false
-            end
-            if KeybindList and KeybindList.Object then
-                KeybindList.Object.Visible = false
-            end
-            if MouseBindToggle and MouseBindToggle.Object then
-                MouseBindToggle.Object.Visible = false
-            end
-            if MouseBindList and MouseBindList.Object then
-                MouseBindList.Object.Visible = false
-            end
-        end)
-    end 
-end)   
+    end
+end) 
 
 run(function()
     local KitRender
@@ -14222,7 +13879,7 @@ run(function()
 				end
 	
 				if hotbarSwitch(slot) then
-					if event and inputService:IsMouseButtonPressed(0) then 
+					if event and (inputService:IsMouseButtonPressed(0) or inputService.TouchEnabled) then 
 						event:Fire() 
 					end
 					return true
