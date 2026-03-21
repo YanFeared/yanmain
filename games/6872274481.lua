@@ -5341,12 +5341,6 @@ run(function()
 
     local function getOptimizedAttackTiming()
         local currentTime = tick()
-        local baseDelay = 0.11 
-        
-        if currentTime - lastAttackTime < baseDelay then
-            return false
-        end
-        
         return true
     end
 
@@ -5356,7 +5350,7 @@ run(function()
 		local currentTime = tick()
 		local targetHitsPerSec = CustomHitRegSlider.Value
 		if targetHitsPerSec >= 35 then return true end
-		local delayBetweenHits = (10 / targetHitsPerSec) * 0.98
+		local delayBetweenHits = 1 / targetHitsPerSec
 		if currentTime - lastCustomHitTime >= delayBetweenHits then
 			lastCustomHitTime = currentTime
 			return true
@@ -5837,15 +5831,12 @@ run(function()
 
                                     if SyncHits.Enabled then
                                         local swingSpeed = SwingTime.Enabled and SwingTimeSlider.Value or (meta.sword.respectAttackSpeedForEffects and meta.sword.attackSpeed or 0.42)
-                                        if (tick() - swingCooldown) < (swingSpeed * 0.7) then 
-                                            continue 
-                                        end
-                                     local timeSinceLastSwing = tick() - swingCooldown
-                                        local requiredDelay = math.max(swingSpeed * 0.8, 0.1) 
-                                        
-                                        if timeSinceLastSwing < requiredDelay then 
-                                            continue 
-                                        end
+										local timeSinceLastSwing = tick() - swingCooldown
+										local requiredDelay = math.max(swingSpeed * 0.5, 0.05)
+										
+										if timeSinceLastSwing < requiredDelay then 
+											continue 
+										end
                                     end
 
                                     local actualRoot = v.Character.PrimaryPart
