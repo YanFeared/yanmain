@@ -74,7 +74,7 @@ local function downloadPremadeProfiles(commit)
     end
 end
 
-if not shared.VapeDeveloper then
+if not shared.VapeDeveloper and not shared.vapereload then
     local _, subbed = pcall(function()
         return game:HttpGet('https://github.com/poopparty/poopparty')
     end)
