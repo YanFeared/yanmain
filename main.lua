@@ -1,11 +1,10 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 repeat task.wait() until game:IsLoaded()
-if shared.vapereload then return end
 if shared.vape then shared.vape:Uninject() end
 
 if identifyexecutor then
-	if table.find({'Argon', 'Wave', 'Seliware', 'Volt'}, ({identifyexecutor()})[1]) then
+	if table.find({'Wave', 'Seliware', 'Volt'}, ({identifyexecutor()})[1]) then
 		getgenv().setthreadidentity = nil
 	end
 end
@@ -69,6 +68,7 @@ local function downloadFile(path, func)
     return (func or readfile)(path)
 end
 
+
 local function finishLoading()
 	vape.Init = nil
 	vape:Load()
@@ -88,7 +88,7 @@ local function finishLoading()
 				if shared.VapeDeveloper then
 					loadstring(readfile('newvape/loader.lua'), 'loader')()
 				else
-					loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
+					loadstring(game:HttpGet('https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
 				end
 			]]
 			if shared.VapeDeveloper then
@@ -155,7 +155,7 @@ end
 if not shared.VapeIndependent then
     loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
     if isfile('newvape/games/' .. game.PlaceId .. '.lua') then
-        loadstring(readfile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
+        loadstring(downloadFile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
     else
         if not shared.VapeDeveloper then
             local suc, res = pcall(function()
