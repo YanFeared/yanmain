@@ -154,7 +154,7 @@ end
 if not shared.VapeIndependent then
     loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
     if isfile('newvape/games/' .. game.PlaceId .. '.lua') then
-        loadstring(readfile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
+        loadstring(downloadFile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
     else
         if not shared.VapeDeveloper then
             local suc, res = pcall(function()
