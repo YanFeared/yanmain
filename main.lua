@@ -85,6 +85,8 @@ local function finishLoading()
 		if (not teleportedServers) and (not shared.VapeIndependent) then
 			teleportedServers = true
             local teleportScript = [[
+                repeat task.wait() until game:IsLoaded()
+                if getgenv and not getgenv().shared then getgenv().shared = {} end
                 shared.vapereload = true
                 loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
             ]]
@@ -93,6 +95,9 @@ local function finishLoading()
 			end
 			if shared.VapeCustomProfile then
 				teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
+			end
+			if shared.ValidatedUsername then
+				teleportScript = 'shared.ValidatedUsername = "'..shared.ValidatedUsername..'"\n'..teleportScript
 			end
 			vape:Save()
 			queue_on_teleport(teleportScript)
