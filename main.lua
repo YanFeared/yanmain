@@ -66,27 +66,6 @@ local function downloadFile(path, func)
     return (func or readfile)(path)
 end
 
-local function RestoreProfiles()
-	if isfile("newvape/aprilfoolsjoke/profiles.txt") then
-		local HttpService = game:GetService("HttpService")
-		local profileData = readfile("newvape/aprilfoolsjoke/profiles.txt")
-		local success, decodedProfiles = pcall(function()
-			return HttpService:JSONDecode(profileData)
-		end)
-		
-		if success and decodedProfiles then
-			vape.Profiles = decodedProfiles
-			vape:CreateNotification("AeroV4", "Profiles restored successfully!", 5, "info")
-			return true
-		else
-			vape:CreateNotification("AeroV4", "Failed to restore profiles!", 5, "alert")
-			return false
-		end
-	else
-		vape:CreateNotification("AeroV4", "No backup found!", 5, "warning")
-		return false
-	end
-end
 
 local function finishLoading()
 	vape.Init = nil
